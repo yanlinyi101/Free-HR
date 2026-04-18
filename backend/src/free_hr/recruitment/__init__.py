@@ -1,0 +1,1 @@
+"""Recruitment request collaboration module."""
