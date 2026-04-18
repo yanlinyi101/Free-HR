@@ -33,9 +33,8 @@ dev = [
     "asgi-lifespan>=2.1",
 ]
 
-# [project.scripts] will be re-enabled in Task 7 when knowledge_ingest lands:
-# [project.scripts]
-# free-hr-ingest = "free_hr.knowledge_ingest.cli:app"
+[project.scripts]
+free-hr-ingest = "free_hr.knowledge_ingest.cli:app"
 
 [build-system]
 requires = ["hatchling"]
