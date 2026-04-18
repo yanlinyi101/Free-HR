@@ -2,10 +2,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Any
-from sqlalchemy import ForeignKey, String, Text, CheckConstraint, Index, DateTime
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Date, ForeignKey, String, Text, CheckConstraint, Index, DateTime, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+from .config import get_settings
 from .db import Base
 
 
@@ -51,3 +53,58 @@ class ChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     session: Mapped[ChatSession] = relationship(back_populates="messages")
+
+
+EMBED_DIM = get_settings().embedding_dim
+
+
+class LawChunk(Base):
+    __tablename__ = "law_chunks"
+    __table_args__ = (
+        UniqueConstraint("law_name", "article_no", "region", "content_hash", name="uq_law_chunk_dedup"),
+        Index("ix_law_chunks_region", "region"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    law_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    article_no: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    chapter: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    effective_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    region: Mapped[str] = mapped_column(String(32), nullable=False, server_default="national")
+    source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBED_DIM), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class CaseChunk(Base):
+    __tablename__ = "case_chunks"
+    __table_args__ = (
+        UniqueConstraint("case_no", "content_hash", name="uq_case_chunk_dedup"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_title: Mapped[str] = mapped_column(String(512), nullable=False)
+    case_no: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    court: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    judgment_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBED_DIM), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class IngestionRun(Base):
+    __tablename__ = "ingestion_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)  # law / case
+    source_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="pending")
+    stats_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
