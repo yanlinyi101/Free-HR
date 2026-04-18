@@ -1,17 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #1d4ed8;
-  --color-primary-dark: #1e40af;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --font-display: var(--font-display);
   --font-serif: Georgia, "Songti SC", STSong, serif;
 }
 
-html,
-body,
-#__next {
+html, body {
   height: 100%;
+  overflow: hidden;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 100ms;
+}
+button, a, input, textarea, select {
+  transition-property: background-color, border-color, color, box-shadow, transform, opacity;
 }
