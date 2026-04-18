@@ -1,4 +1,4 @@
-export type AIProvider = "deepseek" | "siliconflow" | "custom";
+export type AIProvider = "aiping" | "deepseek" | "siliconflow" | "custom";
 
 export interface AIConfig {
   provider: AIProvider;
@@ -14,17 +14,18 @@ const KEYS = {
   baseUrl: "fhr_ai_base_url",
 } as const;
 
-export const PROVIDER_PRESETS: Record<AIProvider, { label: string; model: string; baseUrl: string }> = {
-  deepseek: { label: "DeepSeek", model: "deepseek-chat", baseUrl: "https://api.deepseek.com/v1" },
-  siliconflow: { label: "SiliconFlow", model: "Qwen/Qwen2.5-72B-Instruct", baseUrl: "https://api.siliconflow.cn/v1" },
-  custom: { label: "自定义 (OpenAI 兼容)", model: "", baseUrl: "" },
+export const PROVIDER_PRESETS: Record<AIProvider, { label: string; model: string; baseUrl: string; placeholder: string }> = {
+  aiping:     { label: "Aiping.cn（推荐）", model: "gpt-4o-mini",                    baseUrl: "https://aiping.cn/api/v1",              placeholder: "QC-..." },
+  deepseek:   { label: "DeepSeek",          model: "deepseek-chat",                  baseUrl: "https://api.deepseek.com/v1",           placeholder: "sk-..." },
+  siliconflow:{ label: "SiliconFlow",        model: "Qwen/Qwen2.5-72B-Instruct",     baseUrl: "https://api.siliconflow.cn/v1",         placeholder: "sk-..." },
+  custom:     { label: "自定义 (OpenAI 兼容)", model: "",                             baseUrl: "",                                      placeholder: "sk-..." },
 };
 
 const DEFAULT: AIConfig = {
-  provider: "deepseek",
+  provider: "aiping",
   apiKey: "",
-  model: "deepseek-chat",
-  baseUrl: "https://api.deepseek.com/v1",
+  model: "gpt-4o-mini",
+  baseUrl: "https://aiping.cn/api/v1",
 };
 
 export function getAIConfig(): AIConfig {

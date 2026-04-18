@@ -188,20 +188,6 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 </select>
               </div>
 
-              {/* Model name */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  模型名称
-                </label>
-                <input
-                  type="text"
-                  value={aiConfig.model}
-                  onChange={(e) => setLocalAIConfig((p) => ({ ...p, model: e.target.value }))}
-                  placeholder="deepseek-chat"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono transition-all"
-                />
-              </div>
-
               {/* API Key */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
@@ -211,8 +197,8 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                   <input
                     type={showKey ? "text" : "password"}
                     value={aiConfig.apiKey}
-                    onChange={(e) => setLocalAIConfig((p) => ({ ...p, apiKey: e.target.value }))}
-                    placeholder="sk-..."
+                    onChange={(e) => { setLocalAIConfig((p) => ({ ...p, apiKey: e.target.value })); setAITestStatus("idle"); }}
+                    placeholder={PROVIDER_PRESETS[aiConfig.provider].placeholder}
                     className="flex-1 text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono transition-all"
                   />
                   <button
@@ -222,6 +208,20 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                     {showKey ? "隐藏" : "显示"}
                   </button>
                 </div>
+              </div>
+
+              {/* Model name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  模型名称
+                </label>
+                <input
+                  type="text"
+                  value={aiConfig.model}
+                  onChange={(e) => setLocalAIConfig((p) => ({ ...p, model: e.target.value }))}
+                  placeholder={PROVIDER_PRESETS[aiConfig.provider].model || "gpt-4o-mini"}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono transition-all"
+                />
               </div>
 
               {/* Base URL (custom only) */}
