@@ -124,3 +124,60 @@ async def test_get_request_404(client):
     c, _ = client
     r = await c.get("/api/recruitment/requests/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
+
+
+async def test_patch_empty_body_returns_422(client):
+    c, _ = client
+    r = await c.post("/api/recruitment/requests")
+    req_id = r.json()["id"]
+    r = await c.patch(f"/api/recruitment/requests/{req_id}", json={})
+    assert r.status_code == 422
+
+
+async def test_patch_edit_before_jd_returns_404(client):
+    c, _ = client
+    r = await c.post("/api/recruitment/requests")
+    req_id = r.json()["id"]
+    r = await c.patch(
+        f"/api/recruitment/requests/{req_id}",
+        json={"edited_content_md": "# draft"},
+    )
+    assert r.status_code == 404
+    assert r.json()["detail"]["error"] == "no_jd_to_edit"
+
+
+async def test_post_message_whitespace_only_returns_422(client):
+    c, _ = client
+    r = await c.post("/api/recruitment/requests")
+    req_id = r.json()["id"]
+    r = await c.post(
+        f"/api/recruitment/requests/{req_id}/messages", json={"content": "   "}
+    )
+    assert r.status_code == 422
+
+
+async def test_post_message_llm_failure_preserves_user_row(client, sqlite_engine):
+    from free_hr.llm_gateway.base import ChatMessage, ChatOptions
+    from free_hr.models import RequestMessage
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
+    c, _ = client
+
+    class BrokenLLM:
+        async def chat_stream(self, messages, options):
+            raise RuntimeError("upstream down")
+            yield  # pragma: no cover
+
+    app.dependency_overrides[api_deps.get_llm_dep] = lambda: BrokenLLM()
+    r = await c.post("/api/recruitment/requests")
+    req_id = r.json()["id"]
+    r = await c.post(
+        f"/api/recruitment/requests/{req_id}/messages", json={"content": "hello"}
+    )
+    assert r.status_code == 503
+
+    session_maker = async_sessionmaker(sqlite_engine, expire_on_commit=False, class_=AsyncSession)
+    async with session_maker() as s:
+        rows = (await s.execute(select(RequestMessage))).scalars().all()
+        assert any(m.role == "user" and m.content == "hello" for m in rows)

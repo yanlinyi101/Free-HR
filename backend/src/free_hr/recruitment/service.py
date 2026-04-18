@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -18,6 +19,10 @@ from .profile import empty_profile, is_ready_for_jd, missing_fields
 
 class StateError(Exception):
     """Raised when a state transition is invalid. Message includes a machine-readable code."""
+
+
+class LLMError(Exception):
+    """Raised when an LLM call fails after the user's input has already been persisted."""
 
 
 REPLY_SYSTEM_PROMPT = """你是 HR 助手，帮业务部门梳理招聘需求。基于已知画像和缺项，自然地追问 1-2 个最相关的缺项（不要像填表单一样逐项盘问）。
@@ -95,19 +100,22 @@ async def append_user_message(
     request: RecruitmentRequest,
     user_content: str,
 ) -> MessageTurn:
-    if len(request.messages) // 2 >= MAX_TURNS:
+    user_turns = sum(1 for m in request.messages if m.role == "user")
+    if user_turns >= MAX_TURNS:
         raise StateError("conversation_too_long")
 
     session.add(RequestMessage(request_id=request.id, role="user", content=user_content))
-    await session.flush()
+    await session.commit()
+    await session.refresh(request)
 
-    history = [{"role": m.role, "content": m.content} for m in request.messages] + [
-        {"role": "user", "content": user_content}
-    ]
+    history = [{"role": m.role, "content": m.content} for m in request.messages]
 
-    new_profile = await extract_profile(
-        llm, history=history, current_profile=request.profile or empty_profile()
-    )
+    try:
+        new_profile = await extract_profile(
+            llm, history=history, current_profile=request.profile or empty_profile()
+        )
+    except Exception as e:
+        raise LLMError("extract_failed") from e
     request.profile = new_profile
     request.title = derive_title(new_profile, fallback=request.title)
     miss = missing_fields(new_profile)
@@ -124,11 +132,14 @@ async def append_user_message(
             ),
         ),
     ]
-    assistant_text = await collect_full_text(
-        llm, reply_messages, ChatOptions(temperature=0.5, max_tokens=800)
-    )
+    try:
+        assistant_text = await collect_full_text(
+            llm, reply_messages, ChatOptions(temperature=0.5, max_tokens=800)
+        )
+    except Exception as e:
+        raise LLMError("reply_failed") from e
     if not assistant_text.strip():
-        assistant_text = "（系统提示：回复生成失败，请重试）"
+        raise LLMError("reply_failed")
 
     session.add(RequestMessage(request_id=request.id, role="assistant", content=assistant_text))
     await session.commit()
@@ -147,9 +158,12 @@ async def generate_and_save_jd(
 ) -> JDDraft:
     validate_transition_to_pending_review(status=request.status, profile=request.profile)
 
-    md = await generate_jd(llm, request.profile)
+    try:
+        md = await generate_jd(llm, request.profile)
+    except Exception as e:
+        raise LLMError("jd_generation_failed") from e
     if not md.strip():
-        raise StateError("jd_generation_empty")
+        raise LLMError("jd_generation_failed")
 
     draft = JDDraft(request_id=request.id, content_md=md)
     session.add(draft)
@@ -166,8 +180,6 @@ async def patch_request(
     edited_content_md: str | None,
     action: str | None,
 ) -> RecruitmentRequest:
-    from datetime import datetime, timezone
-
     if edited_content_md is not None:
         if request.jd_draft is None:
             raise StateError("no_jd_to_edit")

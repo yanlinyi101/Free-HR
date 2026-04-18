@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Position(BaseModel):
@@ -81,6 +81,14 @@ class RequestListItem(BaseModel):
 class PostMessageRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=4000)
 
+    @field_validator("content")
+    @classmethod
+    def _strip_non_empty(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("content must not be blank")
+        return s
+
 
 class PostMessageResponse(BaseModel):
     assistant_message: MessageRead
@@ -90,5 +98,11 @@ class PostMessageResponse(BaseModel):
 
 
 class PatchRequestBody(BaseModel):
-    edited_content_md: Optional[str] = None
+    edited_content_md: Optional[str] = Field(default=None, max_length=50000)
     action: Optional[Literal["approve"]] = None
+
+    @model_validator(mode="after")
+    def _must_have_something(self) -> "PatchRequestBody":
+        if self.edited_content_md is None and self.action is None:
+            raise ValueError("must provide edited_content_md or action")
+        return self

@@ -82,12 +82,14 @@ async def post_message(
     if req is None:
         raise HTTPException(status_code=404, detail="not found")
     try:
-        turn = await svc.append_user_message(session, llm=llm, request=req, user_content=body.content.strip())
+        turn = await svc.append_user_message(session, llm=llm, request=req, user_content=body.content)
     except svc.StateError as e:
         code = str(e).split(":", 1)[0]
         if code == "conversation_too_long":
             raise HTTPException(status_code=409, detail={"error": code})
         raise HTTPException(status_code=400, detail={"error": code})
+    except svc.LLMError as e:
+        raise HTTPException(status_code=503, detail={"error": str(e)})
 
     await session.refresh(req, attribute_names=["messages"])
     assistant_msg = req.messages[-1]
@@ -123,6 +125,8 @@ async def post_jd(
         if msg == "invalid_state":
             raise HTTPException(status_code=409, detail={"error": "invalid_state"})
         raise HTTPException(status_code=500, detail={"error": msg})
+    except svc.LLMError as e:
+        raise HTTPException(status_code=503, detail={"error": str(e)})
 
     await session.refresh(req, attribute_names=["messages", "jd_draft"])
     return _to_request_read(req)
@@ -146,6 +150,8 @@ async def patch_request(
         )
     except svc.StateError as e:
         code = str(e)
+        if code == "no_jd_to_edit":
+            raise HTTPException(status_code=404, detail={"error": code})
         raise HTTPException(status_code=409, detail={"error": code})
 
     await session.refresh(req, attribute_names=["messages", "jd_draft"])
