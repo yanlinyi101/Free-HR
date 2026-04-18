@@ -21,6 +21,9 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
+    # NOTE: Vector dimension is hardcoded to 1024 (matches embedding_dim in config.py).
+    # Migrations are immutable history; if you change embedding_dim, create a new migration.
+
     op.create_table(
         "law_chunks",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -65,6 +68,10 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("case_no", "content_hash", name="uq_case_chunk_dedup"),
     )
+    op.execute(
+        "CREATE UNIQUE INDEX uq_case_chunk_null_case_no "
+        "ON case_chunks (content_hash) WHERE case_no IS NULL"
+    )
 
     op.create_table(
         "ingestion_runs",
@@ -81,6 +88,11 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.CheckConstraint("source_type IN ('law','case')", name="ingestion_runs_source_type_ck"),
+        sa.CheckConstraint(
+            "status IN ('pending','running','success','failed')",
+            name="ingestion_runs_status_ck",
+        ),
     )
 
     # HNSW indexes for cosine similarity.
@@ -98,6 +110,7 @@ def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_case_chunks_embedding")
     op.execute("DROP INDEX IF EXISTS ix_law_chunks_embedding")
     op.drop_table("ingestion_runs")
+    op.execute("DROP INDEX IF EXISTS uq_case_chunk_null_case_no")
     op.drop_table("case_chunks")
     op.drop_index("ix_law_chunks_region", table_name="law_chunks")
     op.drop_table("law_chunks")

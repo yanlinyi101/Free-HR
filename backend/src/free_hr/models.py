@@ -99,6 +99,15 @@ class CaseChunk(Base):
 
 class IngestionRun(Base):
     __tablename__ = "ingestion_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "source_type IN ('law','case')", name="ingestion_runs_source_type_ck"
+        ),
+        CheckConstraint(
+            "status IN ('pending','running','success','failed')",
+            name="ingestion_runs_status_ck",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)  # law / case
