@@ -117,3 +117,68 @@ class IngestionRun(Base):
     error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RecruitmentRequest(Base):
+    __tablename__ = "recruitment_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('drafting','pending_review','approved')",
+            name="recruitment_requests_status_ck",
+        ),
+        Index("ix_recruitment_requests_status_updated", "status", "updated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="drafting")
+    profile: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    messages: Mapped[list["RequestMessage"]] = relationship(
+        back_populates="request", cascade="all, delete-orphan", order_by="RequestMessage.created_at"
+    )
+    jd_draft: Mapped["JDDraft | None"] = relationship(
+        back_populates="request", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class RequestMessage(Base):
+    __tablename__ = "recruitment_request_messages"
+    __table_args__ = (
+        CheckConstraint("role IN ('user','assistant')", name="recruitment_messages_role_ck"),
+        Index("ix_recruitment_messages_request_created", "request_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("recruitment_requests.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    request: Mapped[RecruitmentRequest] = relationship(back_populates="messages")
+
+
+class JDDraft(Base):
+    __tablename__ = "recruitment_jd_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("recruitment_requests.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    content_md: Mapped[str] = mapped_column(Text, nullable=False)
+    edited_content_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    request: Mapped[RecruitmentRequest] = relationship(back_populates="jd_draft")
