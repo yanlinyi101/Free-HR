@@ -1,5 +1,8 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+import { getApiBase } from "./settings";
+
+function API_BASE() {
+  return getApiBase();
+}
 
 export interface Citation {
   idx: number;
@@ -32,7 +35,7 @@ export interface Chunk {
 }
 
 export async function postChat(content: string): Promise<ChatResponse> {
-  const res = await fetch(`${API_BASE}/api/chat`, {
+  const res = await fetch(`${API_BASE()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
@@ -44,9 +47,20 @@ export async function postChat(content: string): Promise<ChatResponse> {
 }
 
 export async function getChunk(chunkId: string): Promise<Chunk> {
-  const res = await fetch(`${API_BASE}/api/knowledge/chunks/${chunkId}`);
+  const res = await fetch(`${API_BASE()}/api/knowledge/chunks/${chunkId}`);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
   return res.json() as Promise<Chunk>;
+}
+
+export async function checkHealth(base: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base.replace(/\/$/, "")}/api/health`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
