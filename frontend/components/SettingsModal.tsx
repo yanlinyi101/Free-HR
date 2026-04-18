@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getApiBase, setApiBase, DEFAULT_BASE } from "@/lib/settings";
-import { checkHealth } from "@/lib/api";
+import { checkHealth, testAIConfig } from "@/lib/api";
 import {
   getAIConfig, setAIConfig, PROVIDER_PRESETS,
   type AIProvider, type AIConfig,
@@ -22,6 +22,8 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   // AI model tab
   const [aiConfig, setLocalAIConfig] = useState<AIConfig>({ provider: "deepseek", apiKey: "", model: "deepseek-chat", baseUrl: "" });
   const [showKey, setShowKey] = useState(false);
+  const [aiTestStatus, setAITestStatus] = useState<"idle" | "checking" | "ok" | "error">("idle");
+  const [aiTestMsg, setAITestMsg] = useState("");
 
   useEffect(() => {
     setApiUrl(getApiBase());
@@ -53,6 +55,26 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       model: preset.model,
       baseUrl: preset.baseUrl,
     }));
+    setAITestStatus("idle");
+    setAITestMsg("");
+  };
+
+  const testAI = async () => {
+    setAITestStatus("checking");
+    setAITestMsg("");
+    const base = getApiBase();
+    const result = await testAIConfig(base, {
+      apiKey: aiConfig.apiKey,
+      model: aiConfig.model,
+      baseUrl: aiConfig.baseUrl,
+    });
+    if (result.ok) {
+      setAITestStatus("ok");
+      setAITestMsg(result.text ? `模型回复：${result.text}` : "连接成功");
+    } else {
+      setAITestStatus("error");
+      setAITestMsg(result.error ?? "未知错误");
+    }
   };
 
   const statusConfig = {
@@ -184,9 +206,6 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
                   API Key
-                  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-normal normal-case tracking-normal">
-                    仅本地展示
-                  </span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -221,13 +240,37 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
+              {/* Test AI button */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={testAI}
+                  disabled={aiTestStatus === "checking" || !aiConfig.apiKey.trim()}
+                  className="text-sm px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap transition-all font-medium"
+                  title={!aiConfig.apiKey.trim() ? "请先填写 API Key" : ""}
+                >
+                  {aiTestStatus === "checking" ? "测试中…" : "测试 AI 连接"}
+                </button>
+                {aiTestStatus !== "idle" && (
+                  <p
+                    className="text-xs flex-1 truncate"
+                    style={{
+                      color: aiTestStatus === "ok" ? "#16a34a" : aiTestStatus === "error" ? "#ef4444" : "#9ca3af",
+                    }}
+                  >
+                    {aiTestStatus === "ok" && "✓ "}
+                    {aiTestStatus === "error" && "✗ "}
+                    {aiTestStatus === "checking" ? "连接检测中…" : aiTestMsg}
+                  </p>
+                )}
+              </div>
+
               {/* Note */}
               <div
                 className="rounded-xl px-4 py-3 text-xs text-gray-500 leading-relaxed"
-                style={{ background: "#fffbeb", border: "1px solid #fef3c7" }}
+                style={{ background: "#f0f9ff", border: "1px solid #e0f2fe" }}
               >
-                <strong className="text-amber-700">注意：</strong>
-                API Key 仅保存在本地浏览器，供参考展示。实际 AI 调用由后端完成，请在后端 <code className="bg-amber-100 px-1 rounded text-amber-700">.env</code> 文件中配置真实密钥。
+                <strong className="text-blue-700">提示：</strong>
+                API Key 保存在本地浏览器（localStorage），每次请求时通过请求头发送给后端。若此处留空，后端将使用服务器 <code className="bg-blue-100 px-1 rounded text-blue-700">.env</code> 中配置的密钥。
               </div>
             </>
           )}

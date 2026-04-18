@@ -38,3 +38,30 @@ async def post_chat(
         refs=result.refs,
         oob_count=result.oob_count,
     )
+
+
+class TestResponse(BaseModel):
+    ok: bool
+    text: str = ""
+    error: str = ""
+
+
+@router.post("/test", response_model=TestResponse)
+async def test_chat(
+    llm: LLMProvider = Depends(get_llm_dep),
+) -> TestResponse:
+    """Lightweight connectivity test: sends a one-token prompt to verify the LLM config."""
+    from ...llm_gateway.base import ChatMessage, ChatOptions
+    try:
+        chunks: list[str] = []
+        async for chunk in llm.chat_stream(
+            [ChatMessage(role="user", content="回复OK两个字即可，不要多余输出。")],
+            ChatOptions(max_tokens=20),
+        ):
+            if chunk.delta_text:
+                chunks.append(chunk.delta_text)
+            if chunk.finish_reason:
+                break
+        return TestResponse(ok=True, text="".join(chunks).strip())
+    except Exception as exc:
+        return TestResponse(ok=False, error=str(exc))
