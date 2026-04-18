@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 from pgvector.sqlalchemy import Vector
+import sqlalchemy as sa
 from sqlalchemy import Date, ForeignKey, String, Text, CheckConstraint, Index, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -129,10 +130,10 @@ class RecruitmentRequest(Base):
         Index("ix_recruitment_requests_status_updated", "status", "updated_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(), primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="drafting")
-    profile: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    profile: Mapped[dict[str, Any]] = mapped_column(sa.JSON(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
@@ -153,9 +154,9 @@ class RequestMessage(Base):
         Index("ix_recruitment_messages_request_created", "request_id", "created_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(), primary_key=True, default=uuid.uuid4)
     request_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+        sa.Uuid(),
         ForeignKey("recruitment_requests.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -169,9 +170,9 @@ class RequestMessage(Base):
 class JDDraft(Base):
     __tablename__ = "recruitment_jd_drafts"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(sa.Uuid(), primary_key=True, default=uuid.uuid4)
     request_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True),
+        sa.Uuid(),
         ForeignKey("recruitment_requests.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
