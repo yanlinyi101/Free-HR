@@ -1,6 +1,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
+from typing import Any
 from sqlalchemy import ForeignKey, String, Text, CheckConstraint, Index, DateTime
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,8 +46,8 @@ class ChatMessage(Base):
     session_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    citations_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    token_usage_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    citations_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    token_usage_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     session: Mapped[ChatSession] = relationship(back_populates="messages")
