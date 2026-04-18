@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export type NavSection = "dashboard" | "chat" | "laws" | "risk";
 
 interface NavItem {
@@ -36,6 +38,15 @@ function IconAlert() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+function IconBriefcase() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+      <line x1="12" y1="12" x2="12" y2="12.01" />
     </svg>
   );
 }
@@ -121,6 +132,25 @@ export default function Sidebar({ active, onNavigate, onOpenSettings }: SidebarP
             </button>
           );
         })}
+
+        {/* Recruitment link — separate route */}
+        <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mt-4 mb-2" style={{ color: "rgba(100,116,139,0.9)" }}>
+          招聘
+        </p>
+        <Link
+          href="/recruitment"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all duration-150"
+          style={{ color: "rgba(148,163,184,0.9)", textDecoration: "none" }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.06)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+          }}
+        >
+          <span className="shrink-0 opacity-80"><IconBriefcase /></span>
+          <span className="flex-1 font-medium text-[13px]">招聘协作</span>
+        </Link>
       </nav>
 
       {/* Bottom */}
