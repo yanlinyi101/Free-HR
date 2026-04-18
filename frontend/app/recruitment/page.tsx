@@ -45,7 +45,7 @@ export default function RecruitmentListPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
+    <main className="max-w-4xl mx-auto p-8 bg-white min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">招聘需求</h1>
         <button

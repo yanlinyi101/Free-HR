@@ -19,11 +19,11 @@ export default function RecruitmentDetailPage({
     getRequest(id).then(setReq).catch((e) => setError(String(e)));
   }, [id]);
 
-  if (error) return <main className="p-8 text-red-600">加载失败：{error}</main>;
-  if (!req) return <main className="p-8">加载中…</main>;
+  if (error) return <main className="p-8 bg-white min-h-screen text-red-600">加载失败：{error}</main>;
+  if (!req) return <main className="p-8 bg-white min-h-screen">加载中…</main>;
 
   return (
-    <main className="h-screen flex flex-col">
+    <main className="h-screen flex flex-col bg-white">
       <header className="border-b px-6 py-3 flex items-center justify-between">
         <div>
           <a href="/recruitment" className="text-sm text-blue-600">← 返回列表</a>
