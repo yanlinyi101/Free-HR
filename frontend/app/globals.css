@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1d4ed8;
+  --color-primary-dark: #1e40af;
+  --font-serif: Georgia, "Songti SC", STSong, serif;
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
